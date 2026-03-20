@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ur">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Premium Eidi Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Sans+Arabic:wght@700&family=Montserrat:wght@500;700;900&display=swap');
+
+        body {
+            /* Deeper richer background with animated gradient flow */
+            background: linear-gradient(135deg, #052410 0%, #021107 50%, #083c1b 100%);
+            background-size: 200% 200%;
+            animation: bgShift 15s ease infinite;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        @keyframes bgShift {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        /* Envelope Container */
+        .envelope-wrapper {
+            position: relative;
+            z-index: 10;
+        }
+
+        .envelope {
+            position: relative;
+            width: 100%;
+            padding-bottom: 66%;
+            /* aspect ratio 1.5 */
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .envelope-wrapper:not(.open):hover .envelope {
+            transform: scale(1.05) translateY(-5px);
+        }
+
+        .envelope-wrapper.open .envelope {
+            transform: translateY(25px) scale(0.92);
+            pointer-events: none;
+        }
+
+        /* LAYER 1: Envelope Back */
+        .envelope-back {
+            position: absolute;
+            inset: 0;
+            background: #cd9a3a;
+            border-radius: 8px;
+            box-shadow: 0 35px 65px -10px rgba(0, 0, 0, 0.9), inset 0 0 40px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+
+        .envelope-back::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255, 255, 255, 0.03) 10px, rgba(255, 255, 255, 0.03) 20px);
+            border-radius: inherit;
+        }
+
+        /* LAYER 2: The Note */
+        .note {
+            width: 80%;
+            aspect-ratio: 2.1;
+            background-image: url('./note.jpg');
+            background-size: 100% 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-radius: 6px;
+            position: absolute;
+            z-index: 20;
+            /* Fully hidden between Back (10) and Front (30) */
+            top: 50%;
+            left: 50%;
+
+            /* Sits invisibly deep inside */
+            transform: translate(-50%, -30%) rotate(0deg) scale(0.9);
+
+            /* Slide up smoothly with delay AFTER flap opens! No opacity fade needed. */
+            transition: transform 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.6s;
+        }
+
+        .envelope-wrapper.open .note {
+            transform: translate(-45%, -135%) rotate(8deg) scale(1.15);
+            /* Once completely out, start bobbing infinitely */
+            animation: floatNote 3s ease-in-out infinite alternate 1.8s;
+            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.8), 0 0 50px rgba(255, 215, 0, 0.3);
+        }
+
+        @keyframes floatNote {
+            0% {
+                transform: translate(-45%, -135%) rotate(8deg) scale(1.15);
+            }
+
+            100% {
+                transform: translate(-45%, -142%) rotate(6deg) scale(1.15);
+            }
+        }
+
+        @media (max-width: 380px) {
+            .envelope-wrapper.open .note {
+                transform: translate(-45%, -120%) rotate(5deg) scale(1.1);
+            }
+
+            @keyframes floatNote {
+                0% {
+                    transform: translate(-45%, -120%) rotate(5deg) scale(1.1);
+                }
+
+                100% {
+                    transform: translate(-45%, -126%) rotate(3deg) scale(1.1);
+                }
+            }
+        }
+
+        /* LAYER 3: Envelope Front */
+        .envelope-front {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(145deg, #f5e8c7, #e0c586);
+            /* V shape cut to pair with the flap */
+            clip-path: polygon(0% 100%, 0% 0%, 50% 50%, 100% 0%, 100% 100%);
+            z-index: 30;
+            border-radius: 8px;
+            box-shadow: inset 0 0 20px rgba(184, 134, 11, 0.2);
+            pointer-events: none;
+        }
+
+        /* LAYER 4: The Flap */
+        .flap {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #f0c954, #b8860b);
+            /* Slightly overlaps the front's 50% to seal perfectly */
+            clip-path: polygon(0% 0%, 100% 0%, 50% 53%);
+            z-index: 40;
+            /* Tops everything when closed */
+            transform-origin: top center;
+            /* Rotate takes 1s. The vital z-index trick snaps at 0.5s when it's totally flat */
+            transition: transform 1s ease-in-out, z-index 0s 0.5s;
+            pointer-events: none;
+        }
+
+        .envelope-wrapper.open .flap {
+            transform: rotateX(180deg);
+            z-index: 15;
+            /* Safely tucked behind the Note (20) */
+        }
+
+        /* Gold seal on the flap */
+        .seal {
+            position: absolute;
+            width: 38px;
+            height: 38px;
+            background: radial-gradient(circle, #ffe175, #dfa200);
+            border-radius: 50%;
+            bottom: 45%;
+            left: 50%;
+            transform: translate(-50%, 50%);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.6);
+            z-index: 45;
+            transition: opacity 0.5s;
+        }
+
+        .seal::after {
+            content: '✨';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+        }
+
+        .envelope-wrapper.open .seal {
+            opacity: 0;
+        }
+
+        /* Typography & Glow */
+        .eid-text {
+            font-family: 'Amiri', serif;
+            background: linear-gradient(to bottom, #ffe680 0%, #d4a017 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 4px 15px rgba(255, 215, 0, 0.5));
+            position: relative;
+        }
+
+        .font-montserrat {
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        /* Advanced Confetti & Particles */
+        .confetti {
+            position: fixed;
+            z-index: 9999;
+            pointer-events: none;
+            will-change: transform;
+        }
+
+        .star {
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        }
+
+        @keyframes floatText {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-12px);
+            }
+        }
+
+        .animate-float {
+            animation: floatText 5s ease-in-out infinite;
+        }
+
+        .glass-badge {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Background Sparkles */
+        .sparkle {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0;
+            animation: twinkle 4s ease-in-out infinite;
+            z-index: 1;
+        }
+
+        @keyframes twinkle {
+
+            0%,
+            100% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+
+            50% {
+                opacity: 0.8;
+                transform: scale(1);
+                box-shadow: 0 0 10px #ffe175;
+            }
+        }
+    </style>
+</head>
+
+<body class="min-h-[100dvh] flex flex-col items-center justify-center relative px-4 py-8">
+    <!-- Login Modal -->
+    <div id="login-modal"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-[#052410]/95 backdrop-blur-xl px-4 transition-opacity duration-500">
+        <div
+            class="bg-gradient-to-b from-[#0a3d1f] to-[#041d0e] p-8 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-amber-500/30 max-w-sm w-full text-center">
+            <h2 class="text-3xl font-bold text-amber-300 font-montserrat mb-2">Welcome</h2>
+            <p class="text-emerald-200 text-sm mb-6 font-montserrat">Please enter your name to unlock your special Eidi!
+            </p>
+
+            <input type="text" id="name-input" placeholder="Your Name"
+                class="w-full bg-[#052410] border border-emerald-700/50 rounded-xl px-4 py-3.5 text-amber-100 font-montserrat outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition mb-5 text-center placeholder-emerald-800/60 font-medium">
+
+            <button onclick="verifyName()" id="verify-btn"
+                class="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-emerald-950 font-montserrat font-black px-6 py-4 rounded-xl shadow-[0_0_20px_rgba(251,191,36,0.3)] transition-all transform hover:scale-105 active:scale-95">
+                Secure Unlock ✨
+            </button>
+            <p id="error-msg"
+                class="text-red-400 mt-4 text-xs font-semibold hidden font-montserrat tracking-widest uppercase"></p>
+        </div>
+    </div>
+
+    <div id="stars-container" class="absolute inset-0 overflow-hidden pointer-events-none z-0"></div>
+
+    <div class="max-w-md w-full text-center z-10 flex flex-col items-center h-full justify-center">
+        <!-- Header -->
+        <div class="mb-12 sm:mb-16 animate-float">
+            <div class="flex justify-center gap-3 sm:gap-4 mb-4">
+                <span class="text-3xl sm:text-4xl drop-shadow-[0_0_15px_rgba(255,215,0,0.5)]">🌙</span>
+                <span class="text-3xl sm:text-4xl drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">🕌</span>
+                <span class="text-3xl sm:text-4xl drop-shadow-[0_0_15px_rgba(255,215,0,0.5)]">✨</span>
+            </div>
+            <h1 class="eid-text text-[4rem] sm:text-[5rem] font-bold tracking-wide mb-1 leading-tight">عید مبارک</h1>
+            <p id="sender-text"
+                class="text-amber-100 text-lg sm:text-2xl mt-4 font-montserrat font-semibold tracking-widest drop-shadow-lg">
+                From your bro ...</p>
+            <div class="inline-block mt-4 px-5 py-2 rounded-full glass-badge transition hover:scale-105 duration-300">
+                <p class="text-emerald-300 text-[10px] sm:text-xs font-montserrat font-bold tracking-widest uppercase">
+                    Premium Special Eidi 🎁</p>
+            </div>
+        </div>
+
+        <!-- Envelope and Note Container -->
+        <div id="envelope-wrapper" class="envelope-wrapper w-full max-w-[280px] sm:max-w-[340px]" onclick="openEidi()">
+            <div class="envelope">
+                <!-- 1. Envelope Back -->
+                <div class="envelope-back"></div>
+
+                <!-- 2. Pakistani 500 Note -->
+                <div class="note"></div>
+
+                <!-- 3. Envelope Front -->
+                <div class="envelope-front flex items-end justify-center pb-4 sm:pb-5">
+                    <div class="text-[#7c501a] text-[10px] font-montserrat font-black tracking-widest opacity-70">
+                        EIDI 2026
+                    </div>
+                </div>
+
+                <!-- 4. Flap -->
+                <div class="flap">
+                    <div class="seal"></div>
+                </div>
+            </div>
+        </div>
+
+        <p id="tap-text"
+            class="text-amber-300 shadow-amber-500/50 text-sm sm:text-base mt-12 font-montserrat font-bold transition-opacity duration-500 animate-pulse bg-emerald-950/60 px-8 py-3 rounded-full border border-amber-600/40 backdrop-blur-md cursor-pointer tracking-wide shadow-2xl">
+            📬 TAP TO OPEN</p>
+
+        <!-- Final message -->
+        <div id="final-text"
+            class="opacity-0 transition-all duration-1000 transform translate-y-8 mt-10 pointer-events-none w-full max-w-sm absolute bottom-8 sm:bottom-auto sm:relative">
+            <div class="text-3xl sm:text-4xl text-amber-400 font-bold eid-text">Eid Mubarak!</div>
+            <p class="text-emerald-100 mt-3 text-xs sm:text-sm font-montserrat font-medium tracking-wide">Enjoy your
+                digital 500 Eidi 🔥</p>
+            <button onclick="window.location.reload()"
+                class="mt-6 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 hover:from-amber-200 hover:via-amber-300 hover:to-amber-400 text-emerald-950 font-montserrat font-black px-10 py-3.5 rounded-full text-sm sm:text-lg shadow-[0_0_30px_rgba(251,191,36,0.5)] transition-all hover:scale-110 active:scale-95 pointer-events-auto">
+                AGAIN ✨
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function initStars() {
+            const container = document.getElementById('stars-container');
+            for (let i = 0; i < 30; i++) {
+                let star = document.createElement('div');
+                star.className = 'sparkle';
+                star.style.width = Math.random() * 4 + 2 + 'px';
+                star.style.height = star.style.width;
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 4 + 's';
+                star.style.animationDuration = Math.random() * 3 + 3 + 's';
+                container.appendChild(star);
+            }
+        }
+        initStars();
+
+        let currentUserName = null;
+
+        async function verifyName() {
+            const nameInput = document.getElementById('name-input').value.trim();
+            const btn = document.getElementById('verify-btn');
+            const errorMsg = document.getElementById('error-msg');
+
+            if (!nameInput) {
+                errorMsg.innerText = "Please enter your name.";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            btn.innerText = 'Verifying...';
+            btn.disabled = true;
+            errorMsg.classList.add('hidden');
+
+            try {
+                const res = await fetch('/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: nameInput })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    currentUserName = data.user.name;
+
+                    const senderLabel = document.getElementById('sender-text');
+                    if (data.user.type === 'bro') {
+                        senderLabel.innerHTML = "From Your Bro Farhan Mehmood 💚";
+                    } else if (data.user.type === 'friend') {
+                        senderLabel.innerHTML = "From Your Friend Farhan 💚";
+                    }
+
+                    const modal = document.getElementById('login-modal');
+                    modal.style.opacity = '0';
+                    setTimeout(() => modal.classList.add('hidden'), 500);
+
+                } else {
+                    errorMsg.innerText = data.error || "Name not found in our records.";
+                    errorMsg.classList.remove('hidden');
+                    btn.innerText = 'Secure Unlock ✨';
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                errorMsg.innerText = "Backend disconnected.";
+                errorMsg.classList.remove('hidden');
+                btn.innerText = 'Secure Unlock ✨';
+                btn.disabled = false;
+            }
+        }
+
+        let isOpened = false;
+
+        function openEidi() {
+            if (isOpened) return;
+            if (!currentUserName) return; // Must be logged in
+
+            isOpened = true;
+
+            // Notify server DB
+            fetch('/open', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: currentUserName })
+            }).catch(e => console.error("Error updating DB:", e));
+
+            const wrapper = document.getElementById('envelope-wrapper');
+            const tapText = document.getElementById('tap-text');
+            const finalText = document.getElementById('final-text');
+
+            wrapper.classList.add('open');
+
+            tapText.style.opacity = '0';
+            setTimeout(() => { tapText.style.display = 'none'; }, 500);
+
+            setTimeout(() => {
+                finalText.classList.remove('pointer-events-none', 'translate-y-8');
+                finalText.style.opacity = '1';
+                finalText.style.transform = 'translateY(0)';
+            }, 1400);
+
+            launchConfetti(150, true);
+            setTimeout(() => launchConfetti(100, false), 600);
+            setTimeout(() => launchConfetti(150, true), 1200);
+            setTimeout(() => launchConfetti(80, false), 1800);
+        }
+
+        function launchConfetti(count, includeStars) {
+            const colors = ['#facc15', '#f87171', '#34d399', '#60a5fa', '#f472b6', '#fff'];
+
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'confetti';
+
+                if (includeStars && Math.random() > 0.7) {
+                    particle.classList.add('star');
+                    particle.style.backgroundColor = '#ffd700';
+                    var size = Math.random() * 10 + 10;
+                } else {
+                    particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    particle.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                    var size = Math.random() * 8 + 6;
+                }
+
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${50 + (Math.random() * 6 - 3)}vw`;
+                particle.style.top = `60vh`;
+                particle.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
+
+                document.body.appendChild(particle);
+
+                const duration = Math.random() * 3000 + 2500;
+
+                const angle = (Math.random() * Math.PI) - (Math.PI / 2);
+                const velocity = Math.random() * 25 + 15;
+                const horizontalTravel = Math.sin(angle) * velocity * 25;
+                const verticalTravel = -Math.cos(angle) * velocity * 25;
+
+                particle.animate([
+                    {
+                        transform: `translate(0, 0) rotate(0deg) scale(0)`,
+                        opacity: 1
+                    },
+                    {
+                        transform: `translate(${horizontalTravel * 0.5}px, ${verticalTravel}px) rotate(${Math.random() * 180 - 90}deg) scale(1)`,
+                        offset: 0.3
+                    },
+                    {
+                        transform: `translate(${horizontalTravel}px, ${window.innerHeight}px) rotate(${Math.random() * 720}deg) scale(0.8)`,
+                        opacity: 0
+                    }
+                ], {
+                    duration: duration,
+                    easing: 'cubic-bezier(.37,0,.63,1)'
+                });
+
+                setTimeout(() => particle.remove(), duration);
+            }
+        }
+    </script>
+</body>
+
+</html>
